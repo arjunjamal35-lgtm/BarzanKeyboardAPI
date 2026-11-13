@@ -41,7 +41,53 @@ module.exports = async (req, res) => {
 
     let result = null;
 
-    if (process.env.GROQ_API_KEY) {
+
+    const models = [
+      "gemini-3.8-flash",
+      "gemini-3.6-flash",
+      "gemini-3.5-flash"
+    ];
+
+    if (process.env.GEMINI_API_KEY) {
+      for (const model of models) {
+        try {
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+            {
+              method: "POST",
+              headers: {
+                "x-goog-api-key": process.env.GEMINI_API_KEY,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [{ text: prompt }]
+                }]
+              }),
+              signal: AbortSignal.timeout(15000)
+            }
+          );
+
+          if (!response.ok) {
+            console.error(model, response.status);
+            continue;
+          }
+
+          const data = await response.json();
+          const output = data.candidates?.[0]?.content?.parts
+            ?.map(p => p.text || "").join("").trim();
+
+          if (output) {
+            result = output;
+            break;
+          }
+        } catch (err) {
+          console.error(model, err?.name);
+        }
+      }
+    }
+
+    if (!result && process.env.GROQ_API_KEY) {
       try {
         const response = await fetch(
           "https://api.groq.com/openai/v1/chat/completions",
@@ -57,52 +103,19 @@ module.exports = async (req, res) => {
                 { role: "user", content: prompt }
               ]
             }),
-            signal: AbortSignal.timeout(20000)
+            signal: AbortSignal.timeout(15000)
           }
         );
 
-        if (!response.ok) {
-      console.error("AI provider HTTP status:", response.status);
-    }
-    if (response.ok) {
+        if (response.ok) {
           const data = await response.json();
           result = data.choices?.[0]?.message?.content;
+        } else {
+          console.error("Groq:", response.status);
         }
       } catch (err) {
-      console.error("AI request exception:", err?.name || "Unknown");
-    }
-    }
-
-    if (!result && process.env.GEMINI_API_KEY) {
-      try {
-        const response = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
-          {
-            method: "POST",
-            headers: {
-              "x-goog-api-key": process.env.GEMINI_API_KEY,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: [{ text: prompt }]
-              }]
-            }),
-            signal: AbortSignal.timeout(20000)
-          }
-        );
-
-        if (!response.ok) {
-      console.error("AI provider HTTP status:", response.status);
-    }
-    if (response.ok) {
-          const data = await response.json();
-          result = data.candidates?.[0]?.content?.parts
-            ?.map(p => p.text || "").join("");
-        }
-      } catch (err) {
-      console.error("AI request exception:", err?.name || "Unknown");
-    }
+        console.error("Groq:", err?.name);
+      }
     }
 
     if (!result) {
