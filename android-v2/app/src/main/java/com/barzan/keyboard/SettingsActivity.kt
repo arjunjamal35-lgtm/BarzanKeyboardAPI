@@ -24,7 +24,7 @@ class SettingsActivity : Activity() {
   val body=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(15),dp(16),dp(15),dp(25));setBackgroundColor(navy)}
   val heading=TextView(this).apply{text=title;textSize=23f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);gravity=Gravity.CENTER;setPadding(0,dp(8),0,dp(20))}
   body.addView(heading)
-  setContentView(ScrollView(this).apply{fillViewport=true;addView(body)})
+  setContentView(ScrollView(this).apply{isFillViewport=true;addView(body)})
   return body
  }
  private fun text(s:String,size:Float=17f)=TextView(this).apply{text=s;textSize=size;setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL or Gravity.RIGHT;setPadding(dp(13),dp(9),dp(13),dp(9))}
