@@ -61,11 +61,16 @@ module.exports = async (req, res) => {
           }
         );
 
-        if (response.ok) {
+        if (!response.ok) {
+      console.error("AI provider HTTP status:", response.status);
+    }
+    if (response.ok) {
           const data = await response.json();
           result = data.choices?.[0]?.message?.content;
         }
-      } catch (_) {}
+      } catch (err) {
+      console.error("AI request exception:", err?.name || "Unknown");
+    }
     }
 
     if (!result && process.env.GEMINI_API_KEY) {
@@ -87,12 +92,17 @@ module.exports = async (req, res) => {
           }
         );
 
-        if (response.ok) {
+        if (!response.ok) {
+      console.error("AI provider HTTP status:", response.status);
+    }
+    if (response.ok) {
           const data = await response.json();
           result = data.candidates?.[0]?.content?.parts
             ?.map(p => p.text || "").join("");
         }
-      } catch (_) {}
+      } catch (err) {
+      console.error("AI request exception:", err?.name || "Unknown");
+    }
     }
 
     if (!result) {
