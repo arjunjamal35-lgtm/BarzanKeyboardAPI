@@ -24,6 +24,12 @@ class BarzanIme : InputMethodService() {
  private val rows=listOf("١٢٣٤٥٦٧٨٩٠", "چپڤق فغعهخحج".replace(" ",""), "شسیبلاتنمکگ", "ئڕرێڵەوزۆد")
  private val emojis=listOf("😀","😂","😍","😊","🥰","❤️","💚","👍","👏","🔥","🌹","🎉","☀️","🌍","😎","🙏","😭","😅","😉","😘","🤔","💜","✨","🎂","😇","😴","🤩","🥳","😃","😜","💯","🙏🏻")
  private val latinRows=listOf("qwertyuiop","asdfghjkl","zxcvbnm")
+ private val russianRows=listOf("йцукенгшщзх","фывапролджэ","ячсмитьбю")
+ private val chineseRows=listOf("qwertyuiop","asdfghjkl","zxcvbnm")
+ private val turkishRows=listOf("qwertyuıopğü","asdfghjklşi","zxcvbnmöç")
+ private val germanRows=listOf("qwertzuiopü","asdfghjklöä","yxcvbnmß")
+ private val frenchRows=listOf("azertyuiop","qsdfghjklm","wxcvbn")
+ private val spanishRows=listOf("qwertyuiop","asdfghjklñ","zxcvbnm")
  private val arabicRows=listOf("ضصثقفغعهخحج","شسيبلاتنمكط","ئءؤرلاىةوزظ")
  private val persianRows=listOf("ضصثقفغعهخحج","شسیبلاتنمکگ","ظطزرذدوپچژ")
  private fun prefs()=getSharedPreferences("barzan",MODE_PRIVATE)
@@ -54,26 +60,35 @@ class BarzanIme : InputMethodService() {
   root.setBackgroundColor(if(dark) navy else Color.rgb(221,230,250))
   val toolbar=line();root.addView(toolbar)
   addKey(toolbar,"☻",0.8f){emoji=!emoji;numbers=false;render()}
-  addKey(toolbar,"GIF",0.8f){Toast.makeText(this,"GIF لە وەشانی داهاتوودا",Toast.LENGTH_SHORT).show()}
   addKey(toolbar,"▤",0.8f){ val clip=(getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager).primaryClip;val t=clip?.getItemAt(0)?.coerceToText(this)?.toString();if(!t.isNullOrEmpty())commit(t) }
-  addKey(toolbar,"文",0.8f){ai("translate")}
+  addKey(toolbar,"文",0.9f){ai("translate")}
   addKey(toolbar,"✓",0.8f){ai("correct")}
   addKey(toolbar,"⚙",0.8f){val i=android.content.Intent(this,SettingsActivity::class.java);i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(i)}
 
   if(emoji){emojis.chunked(8).forEach { chars->val r=line();root.addView(r);chars.forEach { c->addKey(r,c){commit(c)} } }}
   else {
-   val activeRows=when {numbers->listOf("1234567890","@#&-_+()/","*\"':;!?%");currentLang in listOf("en","tr","de","fr","es")->latinRows;currentLang=="ar"->arabicRows;currentLang=="fa"->persianRows;else->rows}
-   activeRows.forEachIndexed { index,letters->
+   val activeRows=when {numbers->listOf("1234567890","@#&-_+()/","*\"':;!?%");currentLang=="en"->latinRows;currentLang=="tr"->turkishRows;currentLang=="de"->germanRows;currentLang=="fr"->frenchRows;currentLang=="es"->spanishRows;currentLang=="ru"->russianRows;currentLang=="zh"->chineseRows;currentLang=="ar"->arabicRows;currentLang=="fa"->persianRows;else->rows}
+   activeRows.forEach { letters->
     val r=line();root.addView(r)
     letters.forEach { c->addKey(r,c.toString()){commit(c.toString())} }
-    if(index==activeRows.lastIndex) addKey(r,"⌫",1.25f){currentInputConnection?.deleteSurroundingText(1,0)}
+
    }
   }
   val bottom=line();root.addView(bottom)
   addKey(bottom,if(numbers)"ABC" else "?123",1.15f,true){numbers=!numbers;emoji=false;render()}
   addKey(bottom,"☻",0.8f){emoji=!emoji;numbers=false;render()}
-  addKey(bottom,"🌐",0.8f){val langs=listOf("ku","ckb-bhd","ar","en","tr","de","fr","ru","es","zh");val enabled=langs.filter { prefs().getBoolean("enabled_"+it,true) };val cycle=if(enabled.isEmpty()) listOf("ku") else enabled;currentLang=cycle[(cycle.indexOf(currentLang).coerceAtLeast(0)+1)%cycle.size];prefs().edit().putString("keyboard_lang",currentLang).apply();emoji=false;numbers=false;render()}
+  addKey(bottom,"🌐",0.8f){
+   val langs=listOf("ku","ckb-bhd","ar","en","tr","de","fr","ru","es","zh")
+   val enabled=langs.filter { prefs().getBoolean("enabled_"+it,true) }
+   val cycle=if(enabled.isEmpty()) listOf("ku") else enabled
+   val index=cycle.indexOf(currentLang)
+   currentLang=cycle[(index+1)%cycle.size]
+   prefs().edit().putString("keyboard_lang",currentLang).apply()
+   emoji=false;numbers=false;render()
+   Toast.makeText(this,when(currentLang){"ku"->"کوردی (سۆرانی)";"ckb-bhd"->"کوردی (بەهدینی)";"ar"->"عەرەبی";"en"->"English";"tr"->"Türkçe";"de"->"Deutsch";"fr"->"Français";"ru"->"Русский";"es"->"Español";else->"中文 (Latin)"},Toast.LENGTH_SHORT).show()
+  }
   addKey(bottom,when(currentLang){"ku"->"کوردی (سۆرانی)";"ckb-bhd"->"کوردی (بەهدینی)";"ar"->"عەرەبی";"en"->"English";"tr"->"Türkçe";"de"->"Deutsch";"fr"->"Français";"ru"->"Русский";"es"->"Español";else->"Space"},3.8f){commit(" ")}
+  addKey(bottom,"⌫",0.9f){currentInputConnection?.deleteSurroundingText(1,0)}
   addKey(bottom,"↵",1.1f,true){enterKey()}
  }
  private fun enterKey(){
@@ -85,7 +100,7 @@ class BarzanIme : InputMethodService() {
  private fun commit(s:String){currentInputConnection?.commitText(s,1)}
  private fun ai(mode:String){
  val info=currentInputEditorInfo ?: return
- if(info.inputType and android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD == android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD && info.inputType and android.text.InputType.TYPE_MASK_VARIATION != 0) { Toast.makeText(this,"لە خانەی پاسۆرد AI ناچالاکە",Toast.LENGTH_SHORT).show();return }
+ if((info.inputType and android.text.InputType.TYPE_MASK_VARIATION) in listOf(android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD, android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD, android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD)) { Toast.makeText(this,"لە خانەی پاسۆرد AI ناچالاکە",Toast.LENGTH_SHORT).show();return }
  val endpoint=prefs().getString("endpoint","https://barzankeyboardapi-psi.vercel.app/api/keyboard").orEmpty()
  if(!endpoint.startsWith("https://")){ Toast.makeText(this,"لە ڕێکخستنەکاندا HTTPS API دابنێ",Toast.LENGTH_LONG).show();return }
  val connection=currentInputConnection ?:return
@@ -102,9 +117,13 @@ class BarzanIme : InputMethodService() {
  val status=http.responseCode
  val response=(if(status in 200..299) http.inputStream else http.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
  val json=runCatching { JSONObject(response) }.getOrNull()
- val result=if(status in 200..299) listOf("result","translation","correctedText","text","output").mapNotNull { json?.optString(it)?.takeIf(String::isNotBlank) }.firstOrNull().orEmpty() else ""
+ val nested=json?.optJSONObject("data")
+ val result=if(status in 200..299) listOf("result","translation","correctedText","text","output").mapNotNull { key ->
+   listOf(json,nested).mapNotNull { obj->obj?.optString(key)?.takeIf { it.isNotBlank() && it!="null" } }.firstOrNull()
+ }.firstOrNull().orEmpty() else ""
+ val serverMessage=json?.optString("error")?.take(120).orEmpty()
  http.disconnect()
- android.os.Handler(mainLooper).post { if(result.isNotBlank()) { val current= currentInputConnection?.getSelectedText(0)?.toString(); if(current==selected) currentInputConnection?.commitText(result,1) else Toast.makeText(this,"دەقەکە گۆڕاوە؛ دووبارە هەوڵ بدە",Toast.LENGTH_LONG).show() } else Toast.makeText(this,if(status in 200..299) "وەڵامی API دەقی ئەنجامی تێدا نییە" else "هەڵەی API: HTTP $status",Toast.LENGTH_LONG).show() }
+ android.os.Handler(mainLooper).post { if(result.isNotBlank()) { val current= currentInputConnection?.getSelectedText(0)?.toString(); if(current==selected) currentInputConnection?.commitText(result,1) else Toast.makeText(this,"دەقەکە گۆڕاوە؛ دووبارە هەوڵ بدە",Toast.LENGTH_LONG).show() } else Toast.makeText(this,if(status in 200..299) "وەڵامی API دەقی ئەنجامی تێدا نییە" else "هەڵەی API: HTTP $status ${serverMessage}",Toast.LENGTH_LONG).show() }
  }catch(e:Exception){android.os.Handler(mainLooper).post { Toast.makeText(this,"پەیوەندی سێرڤەر: ${e.javaClass.simpleName}",Toast.LENGTH_LONG).show() } }
  }
  }
