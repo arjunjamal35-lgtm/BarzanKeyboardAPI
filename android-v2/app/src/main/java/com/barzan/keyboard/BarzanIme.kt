@@ -57,20 +57,23 @@ class BarzanIme : InputMethodService() {
   addKey(toolbar,"GIF",0.8f){Toast.makeText(this,"GIF لە وەشانی داهاتوودا",Toast.LENGTH_SHORT).show()}
   addKey(toolbar,"▤",0.8f){ val clip=(getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager).primaryClip;val t=clip?.getItemAt(0)?.coerceToText(this)?.toString();if(!t.isNullOrEmpty())commit(t) }
   addKey(toolbar,"文",0.8f){ai("translate")}
-  addKey(toolbar,"AI",0.8f){ai("correct")}
+  addKey(toolbar,"✓",0.8f){ai("correct")}
   addKey(toolbar,"⚙",0.8f){val i=android.content.Intent(this,SettingsActivity::class.java);i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(i)}
-  addKey(toolbar,"🎙",0.8f){val i=android.content.Intent(android.content.Intent.ACTION_VOICE_COMMAND);i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);try{startActivity(i)}catch(e:Exception){Toast.makeText(this,"دەنگ لەم ئامێرەدا بەردەست نییە",Toast.LENGTH_SHORT).show()}}
+
   if(emoji){emojis.chunked(8).forEach { chars->val r=line();root.addView(r);chars.forEach { c->addKey(r,c){commit(c)} } }}
   else {
    val activeRows=when {numbers->listOf("1234567890","@#&-_+()/","*\"':;!?%");currentLang in listOf("en","tr","de","fr","es")->latinRows;currentLang=="ar"->arabicRows;currentLang=="fa"->persianRows;else->rows}
-   activeRows.forEach { letters->val r=line();root.addView(r);letters.forEach { c->addKey(r,c.toString()){commit(c.toString())} } }
+   activeRows.forEachIndexed { index,letters->
+    val r=line();root.addView(r)
+    letters.forEach { c->addKey(r,c.toString()){commit(c.toString())} }
+    if(index==activeRows.lastIndex) addKey(r,"⌫",1.25f){currentInputConnection?.deleteSurroundingText(1,0)}
+   }
   }
   val bottom=line();root.addView(bottom)
   addKey(bottom,if(numbers)"ABC" else "?123",1.15f,true){numbers=!numbers;emoji=false;render()}
   addKey(bottom,"☻",0.8f){emoji=!emoji;numbers=false;render()}
   addKey(bottom,"🌐",0.8f){val langs=listOf("ku","ckb-bhd","ar","en","tr","de","fr","ru","es","zh");val enabled=langs.filter { prefs().getBoolean("enabled_"+it,true) };val cycle=if(enabled.isEmpty()) listOf("ku") else enabled;currentLang=cycle[(cycle.indexOf(currentLang).coerceAtLeast(0)+1)%cycle.size];prefs().edit().putString("keyboard_lang",currentLang).apply();emoji=false;numbers=false;render()}
   addKey(bottom,when(currentLang){"ku"->"کوردی (سۆرانی)";"ckb-bhd"->"کوردی (بەهدینی)";"ar"->"عەرەبی";"en"->"English";"tr"->"Türkçe";"de"->"Deutsch";"fr"->"Français";"ru"->"Русский";"es"->"Español";else->"Space"},3.8f){commit(" ")}
-  addKey(bottom,"⌫",0.85f){currentInputConnection?.deleteSurroundingText(1,0)}
   addKey(bottom,"↵",1.1f,true){enterKey()}
  }
  private fun enterKey(){
@@ -88,7 +91,7 @@ class BarzanIme : InputMethodService() {
  val connection=currentInputConnection ?:return
  val selected=connection.getSelectedText(0)?.toString().orEmpty()
  if(selected.isBlank()){Toast.makeText(this,"سەرەتا دەقەکە دیاری بکە",Toast.LENGTH_LONG).show();return}
- val lang=prefs().getString("lang","en") ?: "en"
+ val lang=prefs().getString("lang","ku") ?: "ku"
  Toast.makeText(this,"چاوەڕوان بە...",Toast.LENGTH_SHORT).show()
  thread {
  try {
@@ -96,10 +99,13 @@ class BarzanIme : InputMethodService() {
  http.requestMethod="POST";http.connectTimeout=12000;http.readTimeout=20000;http.doOutput=true;http.setRequestProperty("Content-Type","application/json; charset=utf-8")
  val payload=JSONObject().put("action",mode).put("text",selected).put("targetLanguage",lang).toString()
  http.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
- val result=if(http.responseCode in 200..299) JSONObject(http.inputStream.bufferedReader().use { it.readText() }).optString("result") else ""
+ val status=http.responseCode
+ val response=(if(status in 200..299) http.inputStream else http.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
+ val json=runCatching { JSONObject(response) }.getOrNull()
+ val result=if(status in 200..299) listOf("result","translation","correctedText","text","output").mapNotNull { json?.optString(it)?.takeIf(String::isNotBlank) }.firstOrNull().orEmpty() else ""
  http.disconnect()
- android.os.Handler(mainLooper).post { if(result.isNotBlank()) { val current= currentInputConnection?.getSelectedText(0)?.toString(); if(current==selected) currentInputConnection?.commitText(result,1) else Toast.makeText(this,"دەقەکە گۆڕاوە؛ دووبارە هەوڵ بدە",Toast.LENGTH_LONG).show() } else Toast.makeText(this,"وەڵامی API دروست نییە",Toast.LENGTH_LONG).show() }
- }catch(e:Exception){android.os.Handler(mainLooper).post { Toast.makeText(this,"پەیوەندی AI سەرکەوتوو نەبوو",Toast.LENGTH_LONG).show() } }
+ android.os.Handler(mainLooper).post { if(result.isNotBlank()) { val current= currentInputConnection?.getSelectedText(0)?.toString(); if(current==selected) currentInputConnection?.commitText(result,1) else Toast.makeText(this,"دەقەکە گۆڕاوە؛ دووبارە هەوڵ بدە",Toast.LENGTH_LONG).show() } else Toast.makeText(this,if(status in 200..299) "وەڵامی API دەقی ئەنجامی تێدا نییە" else "هەڵەی API: HTTP $status",Toast.LENGTH_LONG).show() }
+ }catch(e:Exception){android.os.Handler(mainLooper).post { Toast.makeText(this,"پەیوەندی سێرڤەر: ${e.javaClass.simpleName}",Toast.LENGTH_LONG).show() } }
  }
  }
 }

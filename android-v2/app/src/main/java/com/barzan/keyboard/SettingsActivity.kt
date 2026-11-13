@@ -44,8 +44,7 @@ class SettingsActivity : Activity() {
   item(root,"✦  یاریدەدەری زیرەک (AI)","چاککردنەوەی دەق و وەرگێڕان"){showAI()}
   item(root,"🌐  زمانەکان","زیادکردن و چالاککردنی زمانەکان"){showLanguages()}
   item(root,"◉  ڕووکار (Theme)","شینی تاریک و دۆخی ڕووناک"){showTheme()}
-  item(root,"☷  پێشکەوتوو","ڕێکخستنی API"){showAI()}
-  item(root,"ⓘ  دەربارە","Barzan Keyboard V2 Pro • بەرزان جەمال"){AlertDialog.Builder(this).setTitle("Barzan Keyboard V2 Pro").setMessage("کیبۆردی بەرزان — وەشانی ٢").setPositiveButton("باشە",null).show()}
+  item(root,"ⓘ  دەربارە","Barzan Keyboard V2 Pro • بەرزان جەمال"){AlertDialog.Builder(this).setTitle("Barzan Keyboard V2 Pro").setMessage("کیبۆردی بەرزان — V2 Pro\nبەرزان جەمال\n٠٧٧٠١٤٦٩٥٩١").setPositiveButton("باشە",null).show()}
  }
  private fun showLanguages(){
   val root=base("‹   زمانەکان")
