@@ -1,0 +1,14 @@
+
+# Local backups and secrets
+*.backup
+*.backup2
+*.backup3
+*.jks
+*.keystore
+local.properties
+.env
+.env.*
+**/.git/
+**/.git.backup/
+**/build/
+**/.gradle/
